@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"github.com/pborman/uuid"
 	"strings"
+	"context"
 )
 
 type Location struct {
@@ -107,6 +108,16 @@ func handlerPost(w http.ResponseWriter, r *http.Request) {
 	// Save to ES.
 	saveToES(&p, id)
 	fmt.Fprintf(w, "Post received: %s\n", p.Message)
+
+	ctx := context.Background()
+	// you must update project name here
+	bt_client, err := bigtable.NewClient(ctx, PROJECT_ID, BT_INSTANCE)
+	if err != nil {
+		panic(err)
+		return
+	}
+	// TODO (student questions) save Post into BT as well
+
 }
 
 // Save a post to ElasticSearch
