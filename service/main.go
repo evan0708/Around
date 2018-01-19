@@ -45,6 +45,7 @@ type Post struct {
 
 func main() {
 	// Homework 1: map
+	/*
 	m := make(map[string]bool)
 	m["jack"] = true
 	m["john"] = false
@@ -57,6 +58,7 @@ func main() {
 	for _, v := range l {
 		fmt.Println(v)
 	}
+	*/
 
 	// Create a client
 	client, err := elastic.NewClient(elastic.SetURL(ES_URL), elastic.SetSniff(false))
