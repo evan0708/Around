@@ -28,10 +28,10 @@ const (
 	PROJECT_ID = "around-189721"
 	BT_INSTANCE = "around-post"
 	// Needs to update this URL if you deploy it to cloud.
-	ES_URL = "http://104.196.136.125:9200"
+	ES_URL = "http://104.196.119.112:9200"
 
 	// Needs to update this bucket based on your gcs bucket name.
-	BUCKET_NAME = "post-images-75015"
+	BUCKET_NAME = "post-images-189721"
 
 )
 
@@ -94,7 +94,7 @@ func main() {
 	}
 
 	fmt.Println("started-service")
-	http.HandleFunc("/post", handlerPost)
+	http.HandleFunc("/post", handlerPostGCS)
 	http.HandleFunc("/search", handlerSearch)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 
