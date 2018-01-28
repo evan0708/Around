@@ -16,6 +16,8 @@ import (
 	"github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	"github.com/go-redis/redis"
+	"time"
 )
 
 type Location struct {
@@ -31,10 +33,11 @@ const (
 	PROJECT_ID = "around-189721"
 	BT_INSTANCE = "around-post"
 	// Needs to update this URL if you deploy it to cloud.
-	ES_URL = "http://35.229.90.187:9200"
-
+	ES_URL = "http://35.229.90.130:9200"
 	// Needs to update this bucket based on your gcs bucket name.
 	BUCKET_NAME = "post-images-189721"
+	ENABLE_MEMCACHE = true
+	REDIS_URL       = "redis-12339.c1.us-central1-2.gce.cloud.redislabs.com:12339"
 
 )
 
@@ -197,53 +200,6 @@ func saveToGCS(ctx context.Context, r io.Reader, bucket, name string) (*storage.
 	return obj, attrs, err
 }
 
-
-
-
-/*
-func handlerPost(w http.ResponseWriter, r *http.Request) {
-	// Parse from body of request to get a json object.
-	fmt.Println("Received one post request")
-	decoder := json.NewDecoder(r.Body)
-	var p Post
-	if err := decoder.Decode(&p); err != nil {
-		panic(err)
-		return
-	}
-
-	id := uuid.New()
-	// Save to ES.
-	saveToES(&p, id)
-	fmt.Fprintf(w, "Post received: %s\n", p.Message)
-	/*
-	ctx := context.Background()
-	// you must update project name here
-	bt_client, err := bigtable.NewClient(ctx, PROJECT_ID, BT_INSTANCE)
-	if err != nil {
-		panic(err)
-		return
-	}
-	// TODO (student questions) save Post into BT as well
-	// open table
-	tbl := bt_client.Open("post")
-
-	mut := bigtable.NewMutation()
-	t := bigtable.Now()
-	mut.Set("post", "user", t, []byte(p.User))
-	mut.Set("post", "message", t, []byte(p.Message))
-	mut.Set("location", "lat", t, []byte(strconv.FormatFloat(p.Location.Lat, 'f', -1, 64)))
-	mut.Set("location", "lon", t, []byte(strconv.FormatFloat(p.Location.Lon, 'f', -1, 64)))
-	err = tbl.Apply(ctx, id, mut)
-	if err != nil {
-		panic(err)
-		return
-	}
-	fmt.Printf("Post is saved to BigTable: %s\n", p.Message)
-
-
-}
-*/
-
 // Save a post to ElasticSearch
 func saveToES(p *Post, id string) {
 	// Create a client
@@ -279,6 +235,25 @@ func handlerSearch(w http.ResponseWriter, r *http.Request) {
 	ran := DISTANCE
 	if val := r.URL.Query().Get("range"); val != "" {
 		ran = val + "km"
+	}
+
+	key := r.URL.Query().Get("lat") + ":" + r.URL.Query().Get("lon") + ":" + ran
+	if ENABLE_MEMCACHE {
+		rs_client := redis.NewClient(&redis.Options{
+			Addr:     REDIS_URL,
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		})
+
+		val, err := rs_client.Get(key).Result()
+		if err != nil {
+			fmt.Printf("Redis cannot find the key %s as %v.\n", key, err)
+		} else {
+			fmt.Printf("Redis find the key %s.\n", key)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(val))
+			return
+		}
 	}
 
 	fmt.Printf( "Search received: %f %f %s\n", lat, lon, ran)
@@ -329,6 +304,20 @@ func handlerSearch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 		return
+	}
+
+	if ENABLE_MEMCACHE {
+		rs_client := redis.NewClient(&redis.Options{
+			Addr:     REDIS_URL,
+			Password: "", // no password set
+			DB:       0,  // use default DB
+		})
+
+		// Set the cache expiration to be 30 seconds
+		err := rs_client.Set(key, string(js), time.Second*30).Err()
+		if err != nil {
+			fmt.Printf("Redis cannot save the key %s as %v.\n", key, err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
