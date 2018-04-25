@@ -37,7 +37,7 @@ const (
 	// Needs to update this bucket based on your gcs bucket name.
 	BUCKET_NAME = "post-images-189721"
 	ENABLE_MEMCACHE = true
-	REDIS_URL       = "redis-12339.c1.us-central1-2.gce.cloud.redislabs.com:12339"
+	REDIS_URL       = "redis-14120.c1.us-central1-2.gce.cloud.redislabs.com:14120"
 
 )
 
